@@ -3,15 +3,23 @@ library(dendextend)
 library(cluster)
 
 # Read the data (change)
-data_input <- "data_normalized_min_max.csv"
-print(cols_of_interest)
+data_input <- "data_normalized_min_max"
+sample_size <- 1000
 
-# Sample
+# Read input CSV
+data_input <- paste(data_input, ".csv", sep = "")
+print(data_input)
 print(sum(is.na(data_input)) )
 data_normalized <- read_csv(data_input)
-data <- data_normalized[sample(nrow(data_normalized), size = 1000), ]
+data <- data_normalized[sample(nrow(data_normalized), size = sample_size), ]
 variables_of_interest <- colnames(data)[-c(1, 2, ncol(data))]
 label_colors <- c("blue", "red")
+
+# Export sample
+sample_name <- "_sample_"
+sample_data <- paste(data_input, sample_name, sample_size, ".csv", sep = "")
+print(sample_data)
+write.csv(data, sample_data, row.names=TRUE)
 
 # Subset data using variables of interest
 data_subset <- data[, c("labels", variables_of_interest)]
