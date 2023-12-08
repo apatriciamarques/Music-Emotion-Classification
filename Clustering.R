@@ -2,17 +2,15 @@ library(readr)
 library(dendextend)
 library(cluster)
 
-# Read the data
+# Read the data (change)
 data_input <- "data_normalized_min_max.csv"
-variables_of_interest <- colnames(data_input)[-c(1, 2, ncol(data))]
 print(cols_of_interest)
 
 # Sample
+print(sum(is.na(data_input)) )
 data_normalized <- read_csv(data_input)
-data <- data_normalized[sample(nrow(data_normalized), size = 10000), ]
-
-# Filter the data for labels 0 and 1
-data <- subset(data, labels %in% c(0, 1))
+data <- data_normalized[sample(nrow(data_normalized), size = 1000), ]
+variables_of_interest <- colnames(data)[-c(1, 2, ncol(data))]
 label_colors <- c("blue", "red")
 
 # Subset data using variables of interest
@@ -43,6 +41,8 @@ for (i in 1:nrow(method_combinations)) {
   
   # Calculate distances using the subset of variables
   distances <- dist(data[, variables_of_interest], method = distance_method)
+  # Replace NA values with 0
+  distances[is.na(distances)] <- 0
   
   hc <- hclust(distances, method = linkage_method)
   
