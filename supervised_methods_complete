@@ -1,0 +1,309 @@
+library(readr)
+library(ggplot2)
+library(corrplot)
+library(psych)
+library(caret)
+library(class)
+library(pheatmap)
+library(data.table)
+library(rpart)
+
+
+
+#IMPORTANTE - MUDAR O DIRETÓRIO
+orig_data <- read_csv("MEFT/4º ano/Análise Multivariada/Projeto/278k_song_labelled.csv")
+
+orig_data <- subset(orig_data, labels %in% c(0, 1))
+
+cols_of_interest <- colnames(orig_data)[-c(1, length(orig_data))]
+#print(cols_of_interest)
+
+#Doing a sample of our data
+set.seed(5)
+sample_size<-10000
+
+data <- orig_data[sample(nrow(orig_data), size = sample_size), ]
+
+#changing the label that is num to a 2 level factor
+data$labels <- factor(data$labels, levels = c(0, 1))
+
+#Dividing in test set and train test
+set.seed(121)
+train_indices <- sample(1:nrow(data), 0.9 * nrow(data))
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
+
+train_data = train_data[, -1]
+test_data = test_data[, -1]
+
+#STANDARDIZATION WITH MEAN=0 AND SD=1
+
+#Taking the mean and SD of the training data
+train_means <- colMeans(train_data[cols_of_interest])
+
+train_sds <- apply(train_data[cols_of_interest], 2, sd)
+
+#Standardization function
+standardise_mean <- function(x, mean, sd) {(x - mean)/sd}
+
+train_data[cols_of_interest] <- scale(train_data[cols_of_interest])
+
+# Standardize the test data using the mean and standard deviation from the training data
+test_data[cols_of_interest] <- scale(test_data[cols_of_interest],
+                                     center = train_means,
+                                     scale = train_sds)
+
+#CROSS VALIDATION
+cv_control <- trainControl(method = "cv", number = 15)
+
+
+
+####################################
+###### K nearest neighbors #########
+####################################
+
+#KNN with CV to tune the parameter k
+knn_model <- train(labels ~ .,
+                   method     = "knn",
+                   tuneGrid   = expand.grid(k = seq(1, 40, 2)),
+                   trControl  = cv_control,
+                   metric     = "Accuracy",
+                   data       = train_data)
+
+print(knn_model)
+
+#plot of the accuracy VS k
+plot(knn_model, col="blue", pch = 20, lwd = 1.5)
+
+#Saving the best k
+best_k <- knn_model$bestTune$k
+
+print(best_k)
+
+#predictions
+predictions_knn <- predict(knn_model, newdata = test_data)
+
+#Confusion Matrix
+cm_knn <- as.data.frame(table(test_data$labels, predictions_knn))
+cm_knn$predictions_knn <- factor(cm_knn$predictions_knn, levels=rev(levels(cm_knn$predictions_knn)))
+
+#print(cm_knn)
+
+ggplot(cm_knn, mapping = aes(x = Var1,
+                             y = predictions_knn)) +
+  geom_tile(aes(fill = Freq)) +
+  labs(x = "Real",y = "Prediction") +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "lightblue",
+                      high = "cornflowerblue",
+                      trans = "log",
+                      breaks = seq(min(cm_knn$Freq), max(cm_knn$Freq), by = as.integer(((max(cm_knn$Freq)-min(cm_knn$Freq))/2)))) +
+  ggtitle('Confusion Matrix of KNN')
+
+
+
+
+####################################
+########## Nayve Bayes #############
+####################################
+
+#Nayve Bayes model
+nb_tuneGrid <- expand.grid(.usekernel = TRUE,
+                           .adjust = c(0.5, 1, 1.5),
+                           .laplace = c(0, 0.5, 1)
+)
+
+naive_model <- train(labels ~ .,
+                     method     = "naive_bayes",
+                     trControl  = cv_control,
+                     metric     = "Accuracy",
+                     tuneGrid   = nb_tuneGrid,
+                     data       = train_data)
+
+#Confusion Matrix
+cm_nb <- as.data.frame(table(test_data$labels, predict(naive_model, newdata = test_data)))
+cm_nb$Var2 <- factor(cm_nb$Var2, levels=rev(levels(cm_nb$Var2)))
+
+ggplot(cm_nb, mapping = aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Freq)) +
+  labs(x = "Real", y = "Predicted") +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "lightblue",
+                      high = "cornflowerblue",
+                      breaks = seq(50, 500, by = 225)) +
+  ggtitle('Confusion Matrix of Naive bayes')
+
+
+####################################
+########## Decision Tree ###########
+####################################
+
+#Decision Tree model
+tree_model <- rpart(labels ~ ., data = train_data)
+
+#Confusion matrix
+cm_dt <- as.data.frame(table(test_data$labels, predict(tree_model, newdata = test_data, type = "class")))
+cm_dt$Var2 <- factor(cm_dt$Var2, levels=rev(levels(cm_dt$Var2)))
+
+ggplot(cm_dt, mapping = aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Freq)) +
+  labs(x = "Real", y = "Predicted") +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "lightblue",
+                      high = "cornflowerblue",
+                      breaks = seq(50, 500, by = 225)) +
+  ggtitle('Confusion Matrix of Decison Tree')
+
+
+
+##################################
+######### Radom Forest ###########
+##################################
+
+#Random Forest Model with hyperparameter tuning
+forest_model <- train(labels ~ .,
+                      method = "rf",
+                      trControl = cv_control,
+                      metric = "Accuracy",
+                      tuneGrid = expand.grid(mtry = seq(2.5, 4.5, 0.2)), 
+                      data = train_data)
+
+#plot of the accuracy VS mtry
+plot(forest_model, col="blue", pch = 20, lwd = 1.5)
+
+#Confusion matrix
+cm_rf <- as.data.frame(table(test_data$labels, predict(forest_model, newdata = test_data)))
+cm_rf$Var2 <- factor(cm_rf$Var2, levels=rev(levels(cm_rf$Var2)))
+
+ggplot(cm_rf, mapping = aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Freq)) +
+  labs(x = "Real", y = "Predicted") +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "lightblue",
+                      high = "cornflowerblue",
+                      breaks = seq(50, 500, by = 225)) +
+  ggtitle('Confusion Matrix of Random Forest')
+
+
+##################################
+############# SVM ################
+##################################
+
+#SVM Model
+#svm_model <- svm(labels ~ ., data = train_data)
+
+svm_tuneGrid <- expand.grid(.cost = 5,
+                            .Loss = c(1, 1.1, 1.2, 1.3, 1.4),
+                            .weight = c(0.9)
+)
+
+svm_model <- train(labels ~ .,
+                   method = "svmLinearWeights2",
+                   trControl = cv_control,
+                   metric = "Accuracy",
+                   tuneGrid = svm_tuneGrid, 
+                   data = train_data)
+
+best_cost <- svm_model$bestTune$cost
+best_loss <- svm_model$bestTune$Loss
+best_weight <- svm_model$bestTune$weight
+
+best_cost
+best_loss
+best_weight
+
+#Confusion Matrix
+cm_svm <- as.data.frame(table(test_data$labels, predict(svm_model, newdata = test_data)))
+cm_svm$Var2 <- factor(cm_svm$Var2, levels=rev(levels(cm_svm$Var2)))
+
+ggplot(cm_svm, mapping = aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Freq)) +
+  labs(x = "Real", y = "Predicted") +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "lightblue",
+                      high = "cornflowerblue",
+                      breaks = seq(50, 500, by = 225)) +
+  ggtitle('Confusion Matrix of SVM')
+
+
+
+##################################
+###### Gradient Boosting #########
+##################################
+
+xgb_model <- train(
+  labels ~ .,                 
+  data = train_data,           
+  method = "xgbTree",    
+  trControl = cv_control ,
+  tuneGrid = expand.grid(
+    nrounds = 300, #seq(50, 500, 50),
+    max_depth = 4, #seq(1,8,1)
+    colsample_bytree = 1, #seq(1,8,1)
+    eta =0.3, #seq(0.1, 0.9, 0.1)
+    gamma=0,
+    min_child_weight = 4, #seq(1,8,1)
+    subsample = 1 )) #seq(1,8,1)
+
+print(xgb_model)
+
+#plot of the accuracy VS k
+plot(xgb_model, col='blue', pch = 20, lwd = 1.5)
+
+#Saving the best k
+#best_nrounds <- xgb_model$bestTune$nrounds
+
+best_colsample <- xgb_model$bestTune$min_child_weight
+
+print(best_colsample)
+
+predictions_xgb <- predict(xgb_model, newdata = test_data)
+
+#Confusion Matrix
+cm_xgb <- as.data.frame(table(test_data$labels, predictions_xgb))
+cm_xgb$predictions_xgb <- factor(cm_xgb$predictions_xgb, levels=rev(levels(cm_xgb$predictions_xgb)))
+
+ggplot(cm_xgb, mapping = aes(x = Var1,
+                             y = predictions_xgb)) +
+  geom_tile(aes(fill = Freq)) +
+  labs(x = "Real",y = "Prediction") +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "lightblue",
+                      high = "cornflowerblue",
+                      trans = "log",
+                      breaks = seq(min(cm_xgb$Freq), max(cm_xgb$Freq), by = as.integer(((max(cm_xgb$Freq)-min(cm_xgb$Freq))/2)))) +
+  ggtitle('Confusion Matrix of Gradient Boosting')
+
+
+
+
+
+
+#####################3
+#ACCURACY
+
+#Accuracy for KNN #0.905
+accuracy_knn <- sum(cm_knn$Freq[c(1,4)]) / sum(cm_knn$Freq)
+cat("Accuracy for KNN:", accuracy_knn, "\n")
+
+#Accuracy for Naive Bayes #0.882
+accuracy_nb <- sum(cm_nb$Freq[c(1,4)]) / sum(cm_nb$Freq)
+cat("Accuracy for Naive Bayes:", accuracy_nb, "\n")
+
+#Accuracy for Decision Tree #0.892
+accuracy_dt <- sum(cm_dt$Freq[c(1,4)]) / sum(cm_dt$Freq)
+cat("Accuracy for Decision Tree:", accuracy_dt, "\n")
+
+#Accuracy for Random Forest #0.95
+accuracy_rf <- sum(cm_rf$Freq[c(1,4)]) / sum(cm_rf$Freq)
+cat("Accuracy for Random Forest:", accuracy_rf, "\n")
+
+#Accuracy for SVM #0.889
+accuracy_svm <- sum(cm_svm$Freq[c(1,4)]) / sum(cm_svm$Freq)
+cat("Accuracy for SVM:", accuracy_svm, "\n")
+
+#Accuracy for Nayve Bayes #0.96
+accuracy_xgb <- sum(cm_xgb$Freq[c(1,4)]) / sum(cm_xgb$Freq)
+cat("Accuracy for eXtreme Gradient Boosting:", accuracy_xgb, "\n")
+
+
