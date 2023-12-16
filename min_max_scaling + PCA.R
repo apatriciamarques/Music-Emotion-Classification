@@ -16,9 +16,8 @@ windows()
 # Plot the variance explained by each principal component
 plot(pca_variance_ratio, type = 'b', xlab = 'Principal Component', ylab = 'Proportion of Variance Explained')
 
-# Select the number of principal components to retain based on explained variance
-# For example, you might select components that explain a certain percentage of variance (e.g., 90%)
+
 
 # Obtain the transformed data using selected principal components
-num_components_to_retain <- 5  # Adjust this number based on your explained variance threshold
+num_components_to_retain <- 5  
 transformed_data <- as.data.frame(predict(pca_result, newdata = data))
