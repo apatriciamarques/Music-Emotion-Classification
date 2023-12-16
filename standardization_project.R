@@ -33,6 +33,7 @@ data_std_median <- as.data.frame(lapply(data[, -ncol(data)], standardise_median)
 
 #Adding the labels column to the frame
 data_std_median$labels <- data[, ncol(data)]
+write.csv(data_std_median, "data_std_median.csv", row.names=TRUE)
 
 describe(data_std_median)
 
