@@ -5,7 +5,7 @@ min_max_normalize <- function(x) {(x - min(x)) / (max(x) - min(x))}
 data_normalized_min_max <- as.data.frame(lapply(data, min_max_normalize))
 
 # Perform PCA on the updated dataset (data without removed variables)
-pca_result <- prcomp(data_normalized_yeo_johnson, scale = TRUE)
+pca_result <- prcomp(data_normalized_min_max, scale = TRUE)
 
 # Explained variance ratio for each principal component
 pca_variance_ratio <- pca_result$sdev^2 / sum(pca_result$sdev^2)
