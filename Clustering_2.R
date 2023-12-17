@@ -15,7 +15,7 @@ data_normalized_min_max <- read.csv("data_normalized_min_max.csv")
 # Sample a subset of your data
 set.seed(123)
 strata_var <- data_normalized_min_max$labels
-indices <- createDataPartition(strata_var, p = 0.005, list = FALSE)
+indices <- createDataPartition(strata_var, p = 0.05, list = FALSE)
 data_subset <- data_normalized_min_max[indices, ]
 
 # Define distance methods and linkage methods
@@ -61,7 +61,7 @@ for (distance_method in distance_methods) {
 # Sample a subset of your data
 set.seed(123)
 strata_var <- data_normalized_min_max$labels
-indices <- createDataPartition(strata_var, p = 0.01, list = FALSE)
+indices <- createDataPartition(strata_var, p = 0.05, list = FALSE)
 data_subset <- data_normalized_min_max[indices, ]
 
 km.res <- kmeans(data_subset, 2, nstart = 25)
@@ -83,12 +83,12 @@ confusion_matrix_pam
 
 
 #########################################################################################
-############## Dendogram for Ward's Method with Manhattan Distance ######################
+############## Dendogram for Ward's Method with Euclidean Distance ######################
 #########################################################################################
 
 
 # Calculate distances
-distances <- dist(data_subset[, -1], method = "manhattan")
+distances <- dist(data_subset[, -1], method = "euclidean")
 distances[is.na(distances)] <- 0
 
 # Perform hierarchical clustering with Ward's Method
@@ -105,7 +105,7 @@ names(cluster_colors) <- 1:2
 
 dend_colored <- color_branches(dend, k = 2, col = cluster_colors)
 
-par(mar = c(5, 4, 2, 1))  # Set margins to prevent clipping
+par(mar = c(5, 4, 2, 1))  
 plot(dend_colored, main = "Cluster Dendrogram")
 
 
@@ -120,11 +120,11 @@ data_normalized_zscore <- read.csv("data_normalized_zscore.csv")
 # Sample a subset of your data
 set.seed(123)
 strata_var <- data_normalized_zscore$labels
-indices <- createDataPartition(strata_var, p = 0.005, list = FALSE)
+indices <- createDataPartition(strata_var, p = 0.05, list = FALSE)
 data_subset_zscore <- data_normalized_zscore[indices, ]
 
 # Apply the trained model to the new dataset
-distances_zscore <- dist(data_subset_zscore[, -1], method = "manhattan")
+distances_zscore <- dist(data_subset_zscore[, -1], method = "euclidean")
 distances_zscore[is.na(distances_zscore)] <- 0
 
 hc <- hclust(distances_zscore, method = "ward.D")
@@ -169,11 +169,11 @@ data_normalized_yeo <- read.csv("ddata_normalized_yeo_johnson.csv")
 # Sample a subset of your data
 set.seed(123)
 strata_var <- data_normalized_yeo$labels
-indices <- createDataPartition(strata_var, p = 0.005, list = FALSE)
+indices <- createDataPartition(strata_var, p = 0.05, list = FALSE)
 data_subset_yeo <- data_normalized_yeo[indices, ]
 
 # Apply the trained model to the new dataset
-distances_yeo <- dist(data_subset_yeo[, -1], method = "manhattan")
+distances_yeo <- dist(data_subset_yeo[, -1], method = "euclidean")
 distances_yeo[is.na(distances_yeo)] <- 0
 
 hc <- hclust(distances_yeo, method = "ward.D")
@@ -187,7 +187,7 @@ confusion_matrix_yeo <- table(cluster_labels_yeo, data_subset_yeo$labels)
 confusion_matrix_yeo
 
 
-#####################PCA
+#####################Standardized PCA
 # Read the data
 data_normalized_pca <- read.csv("Stand_PCA.csv")
 data_normalized_pca
@@ -199,7 +199,7 @@ indices <- createDataPartition(strata_var, p = 0.05, list = FALSE)
 data_subset_pca <- data_normalized_pca[indices, ]
 
 # Apply the trained model to the new dataset
-distances_pca <- dist(data_subset_pca[, -1], method = "manhattan")
+distances_pca <- dist(data_subset_pca[, -1], method = "euclidean")
 distances_pca[is.na(distances_pca)] <- 0
 
 hc <- hclust(distances_pca, method = "ward.D")
@@ -247,7 +247,7 @@ indices <- createDataPartition(strata_var, p = 0.05, list = FALSE)
 data_subset_min_max <- final_dataset[indices, ]
 
 # Apply the trained model to the new dataset
-distances_pca_min_max <- dist(data_subset_min_max[, -1], method = "manhattan")
+distances_pca_min_max <- dist(data_subset_min_max[, -1], method = "euclidean")
 distances_pca_min_max[is.na(distances_pca_min_max)] <- 0
 
 hc <- hclust(distances_pca_min_max, method = "ward.D")
