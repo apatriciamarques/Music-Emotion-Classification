@@ -65,13 +65,6 @@ ggplot(data, aes(x = speechiness, fill = factor(labels))) +
   facet_grid(.~labels) +  
   theme_minimal()
 
-#Acousticness
-ggplot(data, aes(x = acousticness, fill = factor(labels))) +
-  geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) +
-  labs(title = "Distribution of Acousticness by Emotion", x = "Acousticness ", y = "Frequency", fill = "Emotion") +
-  scale_fill_manual(values = label_colors, breaks = c("0", "1"), name = "Emotion") +
-  facet_grid(.~labels) +  
-  theme_minimal()
 
 #Instrumentalness
 ggplot(data, aes(x = instrumentalness, fill = factor(labels))) +
