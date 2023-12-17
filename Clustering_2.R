@@ -3,6 +3,11 @@ library(caret)
 library(dplyr)
 library(cluster)
 library(dendextend)
+library(plotly)
+#install.packages("alphahull")
+library(alphahull)
+install.packages("geometry")
+library(geometry)
 
 # Read the data
 data_normalized_min_max <- read.csv("data_normalized_min_max.csv")
@@ -258,7 +263,7 @@ confusion_matrix_pca_min_max
 
 # Create the PCA data frame for plotting, using only the first two principal components
 pca_data_for_plotting <- data_subset_min_max[, 1:2]
-pca_data_for_plotting$cluster <- as.factor(cluster_labels_pca_min_maxa)
+pca_data_for_plotting$cluster <- as.factor(cluster_labels_pca_min_max)
 
 # Function to create data frame for convex hull
 getHull <- function(df) {
@@ -281,3 +286,23 @@ ggplot(pca_data_for_plotting, aes(x = PC1, y = PC2, color = cluster)) +
   scale_fill_manual(values = c("blue", "red")) +
   theme_minimal() +
   labs(title = "Cluster plot", x = "Dim1 (PC1)", y = "Dim2 (PC2)")
+
+library(plotly)
+
+########################## 3D PLOT
+
+# PCA data with 3 principal components
+pca_data_for_plotting <- data_subset_min_max[, 1:3]  
+pca_data_for_plotting$cluster <- as.factor(cluster_labels_pca_min_max)
+
+# Create 3D scatter plot with convex hulls using plotly
+plot_3d <- plot_ly() %>%
+  add_trace(data = pca_data_for_plotting, 
+            x = ~PC1, y = ~PC2, z = ~PC3, 
+            color = ~cluster, type = 'scatter3d', mode = 'markers', marker = list(size = 5)) %>%
+  layout(scene = list(xaxis = list(title = 'Dim1 (PC1)'), 
+                      yaxis = list(title = 'Dim2 (PC2)'), 
+                      zaxis = list(title = 'Dim3 (PC3)')))
+
+# Show the plot
+plot_3d
