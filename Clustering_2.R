@@ -3,20 +3,37 @@ library(caret)
 library(dplyr)
 library(cluster)
 library(dendextend)
-library(plotly)
-#install.packages("alphahull")
-library(alphahull)
-install.packages("geometry")
-library(geometry)
 
-# Read the data
-data_normalized_min_max <- read.csv("data_normalized_min_max.csv")
-
-# Sample a subset of your data
+orig_data <- read_csv("278k_song_labelled.csv")
+orig_data <- subset(data, labels %in% c(0, 1))
+strata_var <- orig_data$labels
 set.seed(123)
-strata_var <- data_normalized_min_max$labels
 indices <- createDataPartition(strata_var, p = 0.05, list = FALSE)
-data_subset <- data_normalized_min_max[indices, ]
+data <- orig_data[indices, ]
+
+#changing the label that is num to a 2 level factor
+data$labels <- factor(data$labels, levels = c(0, 1))
+
+cols_of_interest <- colnames(orig_data)[-c(1, length(orig_data))]
+
+data_normalized = data[, -1]
+
+################################
+####### PRE-PROCESSING #########
+################################
+
+
+#NORMALIZAÇÃO 
+
+min_data_normalized<- sapply(data[cols_of_interest], min)
+max_data_normalized<- sapply(data[cols_of_interest], max)
+
+scale_data_normalized = max_data_normalized - min_data_normalized
+
+data_normalized[cols_of_interest] <- scale(data[cols_of_interest], center = min_data_normalized, scale = scale_data_normalized)
+
+data_subset <- data_normalized
+
 
 # Define distance methods and linkage methods
 distance_methods <- c("euclidean", "manhattan")
@@ -53,33 +70,43 @@ for (distance_method in distance_methods) {
 }
 
 
-
 #########################################################################################
 ########################################## K-Means ######################################
 #########################################################################################
 
-# Sample a subset of your data
-set.seed(123)
-strata_var <- data_normalized_min_max$labels
-indices <- createDataPartition(strata_var, p = 0.05, list = FALSE)
-data_subset <- data_normalized_min_max[indices, ]
+data_subset_no_labels <- data_subset[, -which(names(data_subset) == "labels")]
 
-km.res <- kmeans(data_subset, 2, nstart = 25)
+# Perform unsupervised k-means clustering
+km.res <- kmeans(data_subset_no_labels, 2, nstart = 25)
 
-# Calculate confusion matrix for k-means
-confusion_matrix_km <- table(km.res$cluster, data_subset$labels)
+# Extract cluster labels
+cluster_labels <- km.res$cluster
 
-confusion_matrix_km 
+original_labels <- data_subset$labels
+
+# Print the confusion matrix
+confusion_matrix <- table(cluster_labels, original_labels)
+print(confusion_matrix)
 
 #########################################################################################
 ######################################## K-Medoids ######################################
 #########################################################################################
 
-kmed <- pam(data_subset, k = 2)
+# Remove the "labels" column for unsupervised k-medoids
+data_subset_no_labels <- data_subset[, -which(names(data_subset) == "labels")]
 
-# Calculate confusion matrix 
-confusion_matrix_pam <- table(kmed$cluster, data_subset$labels)
-confusion_matrix_pam
+# Perform unsupervised k-medoids clustering
+medoid_res <- pam(data_subset_no_labels, k = 2)
+
+# Extract cluster medoids
+medoid_cluster_labels <- medoid_res$cluster
+
+original_labels <- data_subset$labels
+
+# Print the confusion matrix
+confusion_matrix_medoids <- table(medoid_cluster_labels, original_labels)
+print(confusion_matrix_medoids)
+
 
 
 #########################################################################################
@@ -263,7 +290,7 @@ confusion_matrix_pca_min_max
 
 # Create the PCA data frame for plotting, using only the first two principal components
 pca_data_for_plotting <- data_subset_min_max[, 1:2]
-pca_data_for_plotting$cluster <- as.factor(cluster_labels_pca_min_max)
+pca_data_for_plotting$cluster <- as.factor(cluster_labels_pca_min_maxa)
 
 # Function to create data frame for convex hull
 getHull <- function(df) {
@@ -286,23 +313,3 @@ ggplot(pca_data_for_plotting, aes(x = PC1, y = PC2, color = cluster)) +
   scale_fill_manual(values = c("blue", "red")) +
   theme_minimal() +
   labs(title = "Cluster plot", x = "Dim1 (PC1)", y = "Dim2 (PC2)")
-
-library(plotly)
-
-########################## 3D PLOT
-
-# PCA data with 3 principal components
-pca_data_for_plotting <- data_subset_min_max[, 1:3]  
-pca_data_for_plotting$cluster <- as.factor(cluster_labels_pca_min_max)
-
-# Create 3D scatter plot with convex hulls using plotly
-plot_3d <- plot_ly() %>%
-  add_trace(data = pca_data_for_plotting, 
-            x = ~PC1, y = ~PC2, z = ~PC3, 
-            color = ~cluster, type = 'scatter3d', mode = 'markers', marker = list(size = 5)) %>%
-  layout(scene = list(xaxis = list(title = 'Dim1 (PC1)'), 
-                      yaxis = list(title = 'Dim2 (PC2)'), 
-                      zaxis = list(title = 'Dim3 (PC3)')))
-
-# Show the plot
-plot_3d
