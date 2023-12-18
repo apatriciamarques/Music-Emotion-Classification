@@ -52,7 +52,7 @@ results_df <- data.frame(
 for (distance_method in distance_methods) {
   for (linkage_method in linkage_methods) {
     # Calculate distances
-    distances <- dist(data_subset[, -1], method = distance_method)
+    distances <- dist(data_subset[, -ncol(data_subset)], method = distance_method)
     distances[is.na(distances)] <- 0
     
     # Perform hierarchical clustering
@@ -110,12 +110,12 @@ print(confusion_matrix_medoids)
 
 
 #########################################################################################
-############## Dendogram for Ward's Method with Euclidean Distance ######################
+############## Dendogram for Ward's Method with EManhattan Distance ######################
 #########################################################################################
 
 
 # Calculate distances
-distances <- dist(data_subset[, -1], method = "euclidean")
+distances <- dist(data_subset[, -1], method = "manhattan")
 distances[is.na(distances)] <- 0
 
 # Perform hierarchical clustering with Ward's Method
